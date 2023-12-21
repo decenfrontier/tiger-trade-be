@@ -12,5 +12,8 @@ class BaseStrategy:
 			}
 		})
 
-	def calc(self):
+	def calc(self):  # 选股
+		pass
+
+	def trad(self):  # 交易
 		pass

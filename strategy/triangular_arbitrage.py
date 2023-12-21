@@ -39,9 +39,9 @@ class TriangularArbitrage(BaseStrategy):
 			cb = market_c + '/' + market_b
 			ca = market_c + '/' + market_a
 			# 获取最新价格
-			p1, p1_ts = self.fetch_ticker_safe(ba)
-			p2, p2_ts = self.fetch_ticker_safe(cb)
-			p3, p3_ts = self.fetch_ticker_safe(ca)
+			p1, p1_ts = self._fetch_ticker_safe(ba)
+			p2, p2_ts = self._fetch_ticker_safe(cb)
+			p3, p3_ts = self._fetch_ticker_safe(ca)
 			if p1 == 0 or p2 == 0 or p3 == 0:
 				continue
 			print('p1_ts={}, p2_ts={}, p3_ts={}'.format(p1_ts, p2_ts, p3_ts))
@@ -63,7 +63,10 @@ class TriangularArbitrage(BaseStrategy):
 		# 最后把内容生成到csv
 		results_df.to_csv('./tri_arb_result.csv', index=False)
 
-	def fetch_ticker_safe(self, symbol):
+	def trad(self):
+		pass
+
+	def _fetch_ticker_safe(self, symbol):
 		try:
 			ticker_data = self.exchange.fetch_ticker(symbol)
 			return ticker_data['last'] or 0, ticker_data['timestamp'] or 0
