@@ -10,7 +10,7 @@ class TriangularArbitrage(BaseStrategy):
 		markets = self.exchange.load_markets()
 		# 找到同时以A和B计价的交易对
 		market_a = 'BTC'
-		market_b = 'USDT'
+		market_b = 'ETH'
 		symbols = list(markets.keys())
 		symbols_df = pd.DataFrame(symbols, columns=['symbol'])
 		# 分割字符串得到 基础货币/计价货币
@@ -66,7 +66,7 @@ class TriangularArbitrage(BaseStrategy):
 	def fetch_ticker_safe(self, symbol):
 		try:
 			ticker_data = self.exchange.fetch_ticker(symbol)
-			return ticker_data['last'], ticker_data['timestamp']
+			return ticker_data['last'] or 0, ticker_data['timestamp'] or 0
 		except Exception as e:
 			return 0, 0
 
