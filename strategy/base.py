@@ -2,18 +2,18 @@ import ccxt
 
 
 class BaseStrategy:
-	def __init__(self):
-		self.exchange = ccxt.binance({
-			'timeout': 15000,
-			'enableRateLimit': True,
-			'proxies': {
-				'https': 'http://127.0.0.1:7897',
-				'http': 'http://127.0.0.1:7897'
-			}
-		})
+    def __init__(self):
+        self.exchange = ccxt.binance({
+            'timeout': 15000,
+            'enableRateLimit': True,
+            'proxies': {
+                'https': 'http://127.0.0.1:7897',
+                'http': 'http://127.0.0.1:7897'
+            }
+        })
 
-	def calc(self):  # 选股
-		pass
+    def select_stock(self):
+        pass
 
-	def trad(self):  # 交易
-		pass
+    def make_trad(self):
+        pass
