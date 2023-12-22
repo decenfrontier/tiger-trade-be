@@ -1,10 +1,10 @@
 import pandas as pd
 import time
 
-from strategy.base import BaseStrategy
+from strategy.base import StrategyBase
 
 
-class TriangularArbitrage(BaseStrategy):
+class TriangularArbitrage(StrategyBase):
     def select_stock(self):
         # 加载行情
         markets = self.exchange.load_markets()
