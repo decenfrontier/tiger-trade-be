@@ -3,13 +3,12 @@ import sys
 import ccxt
 import pandas as pd
 
-# 这个交易所不限制拉取ticker limit
 exchange = ccxt.binance({'timeout': 15000,
-                          'enableRateLimit': True,
-                          'proxies': {
-                              'https': 'http://127.0.0.1:7897',
-                              'http': 'http://127.0.0.1:7897'
-                          }})
+                         'enableRateLimit': True,
+                         'proxies': {
+                             'https': 'http://127.0.0.1:7897',
+                             'http': 'http://127.0.0.1:7897'
+                         }})
 
 
 def download(symbol, from_ts, end_ts, timeframe):
@@ -24,7 +23,7 @@ def download(symbol, from_ts, end_ts, timeframe):
         if len(data) >= ticker_count or from_ts >= end_ts or origin_len == len(data):
             break
         from_ts = int(data[-1][0]) + 1
-        print('process={}, from_ts={}'.format(len(data)/ticker_count, from_ts))
+        print('process={}, from_ts={}'.format(len(data) / ticker_count, from_ts))
     return data
 
 

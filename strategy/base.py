@@ -21,7 +21,7 @@ class StrategyBase:
     def on_next(self):
         raise NotImplementedError("on_next must be implemented")
 
-    def select_stock(self):
+    def select_symbol(self):
         raise NotImplementedError("select_stock must be implemented")
 
     def make_trad(self):
