@@ -13,7 +13,7 @@ class BaseStrategy:
         })
 
     def select_stock(self):
-        pass
+        raise NotImplementedError("select_stock must be implemented")
 
     def make_trad(self):
-        pass
+        raise NotImplementedError("make_trad must be implemented")
