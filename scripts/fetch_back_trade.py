@@ -2,6 +2,7 @@ from datetime import datetime
 import sys
 import ccxt
 import pandas as pd
+from pkg.xlog import logger
 
 exchange = ccxt.binance({'timeout': 15000,
                          'enableRateLimit': True,
@@ -23,7 +24,7 @@ def download(symbol, from_ts, end_ts, timeframe):
         if len(data) >= ticker_count or from_ts >= end_ts or origin_len == len(data):
             break
         from_ts = int(data[-1][0]) + 1
-        print('process={}, from_ts={}'.format(len(data) / ticker_count, from_ts))
+        logger.info('process={}, from_ts={}'.format(len(data) / ticker_count, from_ts))
     return data
 
 

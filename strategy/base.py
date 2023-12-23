@@ -1,5 +1,4 @@
-import ccxt
-import os
+from pkg.xlog import logger
 
 
 class StrategyBase:
@@ -8,10 +7,10 @@ class StrategyBase:
         self.initial_cash = initial_cash
 
     def on_start(self):
-        print("on_start")
+        logger.info("on_start")
 
     def on_stop(self):
-        print("on_stop")
+        logger.info("on_stop")
 
     def on_next(self, candle) -> []:
         raise NotImplementedError("on_next must be implemented")

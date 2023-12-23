@@ -2,6 +2,7 @@ import pandas as pd
 import time
 
 from strategy.base import StrategyBase
+from pkg.xlog import logger
 
 
 class StrategyTriangular(StrategyBase):
@@ -65,7 +66,7 @@ class StrategyTriangular(StrategyBase):
             if not _is_in_one_sec(cur_ts, p1_ts, p2_ts, p3_ts):
                 continue
             profit = (p3 / (p1 * p2) - 1) * 1000
-            print('market_c={}, profit={}'.format(market_c, profit))
+            logger.info('market_c={}, profit={}'.format(market_c, profit))
             if profit > self.lower_profit_limit:
                 self.market_c = market_c
                 self.price_ba = p1

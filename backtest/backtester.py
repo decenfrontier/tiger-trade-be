@@ -4,21 +4,12 @@ import time
 import ccxt
 
 from model.trade import TradeData
+import matplotlib.pyplot as plt
 
 
 class BackTester:
-	def __init__(self, data, strategy_cls, leverage, commission, initial_cash=100000):
-		self.data = data  # 回测数据
-		self.strategy_cls = strategy_cls  # 策略
-		self.leverage = leverage  # 杠杆率
-		self.commission = commission  # 手续费
-		self.initial_cash = initial_cash  # 初始资金，默认10万
-		# ------------------------------------------------------
+	def __init__(self, data, strategy_cls, leverage, commission, slippage, initial_cash=100000):
 		self.exchange = ccxt.binance({
-			'apiKey': os.getenv('TEST_API_KEY'),
-			'secret': os.getenv('TEST_SECRET_KEY'),
-			'testnet': True,  # 指定为测试环境
-			'url': 'https://testnet.binance.vision',  # 指定测试环境的URL
 			'timeout': 15000,
 			'enableRateLimit': True,
 			'proxies': {
@@ -26,7 +17,14 @@ class BackTester:
 				'http': 'http://127.0.0.1:7897'
 			}
 		})
-		self.trades = []  # 已完成的交易
+		self.data = data  # 回测数据
+		self.strategy_cls = strategy_cls  # 策略
+		self.leverage = leverage  # 杠杆率
+		self.commission = commission  # 手续费
+		self.slippage = slippage  # 滑点
+		self.initial_cash = initial_cash  # 初始资金，默认10万
+		# ------------------------------------------------------
+		self.trades = []  # 已完成的交易清单
 		self.ongoing_orders = []  # 还未成交的订单
 
 	def run(self):
@@ -38,14 +36,27 @@ class BackTester:
 			self.ongoing_orders.extend(ongoing_orders)
 			self.waiting_order_finish()
 		strategy_inst.on_stop()
-		profit = self.calculate()
-		print('profit={}', profit)
+		self.calculate()
 
-	# 夏普率, 盈亏比, 胜率, 最大回撤, 年化利率
+	# 净利润，利润率
 	def calculate(self):
-		for trade in self.trades:
-			pass
-		return 1,2,3,4
+		x = []  # 横轴=交易时间
+		y = []  # 纵轴=净利润
+		while len(self.trades) >= 3:
+			# 每三个交易为一组，逐组计算利润
+			trade3 = self.trades[:3]
+			profit3 = 0
+			for trade in trade3:
+				if trade.side == 'buy':
+					profit3 -= trade.price * trade.amount
+				else:
+					ts = trade.ts
+					x.append(ts)
+					profit3 += trade.price * trade.amount
+			y.append(profit3)
+			self.trades = self.trades[3:]
+		plt.plot(x, y)
+		plt.show()
 
 	# 确定order交易成功再继续
 	def waiting_order_finish(self):
@@ -64,7 +75,5 @@ class BackTester:
 
 
 if __name__ == '__main__':
-	a = [1,2,3]
-	b = [4,5,6]
-
-	print(a + b)
+	a = [0, 1, 2]
+	print(a[3:])
