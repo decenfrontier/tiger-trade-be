@@ -1,16 +1,11 @@
 import ccxt
+import os
 
 
 class StrategyBase:
-    def __init__(self):
-        self.exchange = ccxt.binance({
-            'timeout': 15000,
-            'enableRateLimit': True,
-            'proxies': {
-                'https': 'http://127.0.0.1:7897',
-                'http': 'http://127.0.0.1:7897'
-            }
-        })
+    def __init__(self, exchange, initial_cash):
+        self.exchange = exchange
+        self.initial_cash = initial_cash
 
     def on_start(self):
         print("on_start")
@@ -18,7 +13,7 @@ class StrategyBase:
     def on_stop(self):
         print("on_stop")
 
-    def on_next(self):
+    def on_next(self, candle) -> []:
         raise NotImplementedError("on_next must be implemented")
 
     def select_symbol(self):
