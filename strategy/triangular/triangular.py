@@ -49,10 +49,11 @@ class StrategyTriangular(StrategyBase):
         self.clear_temp_data()
         # 三角套利这里的candle如果是一个数组，会有点矛盾，每一次新的交易对都要重新计算，但没计算前又不知道是第三个交易对选哪个
         # 所以我们这里candle就只传入时间，方便回测
-        self.select_symbol(since=candle)  # 每一次都重新选出第三个交易对
-        self.make_trad()
+        if self.select_symbol(since=candle):  # 每一次都重新选出第三个交易对
+            self.make_trad()
 
     def select_symbol(self, since=None):
+        max_profit = 0
         for currency_c in self.common_base_list:
             ba = self.currency_b + '/' + self.currency_a
             cb = currency_c + '/' + self.currency_b
@@ -67,7 +68,9 @@ class StrategyTriangular(StrategyBase):
                 continue
             profit = (p3 / (p1 * p2) - 1) * 1000
             logger.info('currency_c={}, profit={}'.format(currency_c, profit))
-            if profit > self.lower_profit_limit:
+            if profit > max_profit:
+                max_profit = profit
+            if profit > self.lower_profit_limit:  # 利润超过设定的下限，可以进行三角套利
                 self.currency_c = currency_c
                 self.price_ba = p1
                 self.price_cb = p2
@@ -75,7 +78,9 @@ class StrategyTriangular(StrategyBase):
                 self.price_ba_ts = p1_ts
                 self.price_cb_ts = p2_ts
                 self.price_ca_ts = p3_ts
-                return
+                return True
+            time.sleep(self.exchange.rateLimit * 3 / 1000)
+        return False
 
     def make_trad(self):
         if self.currency_c == '':
@@ -97,10 +102,6 @@ class StrategyTriangular(StrategyBase):
         amount_c = self.get_balance(self.currency_c)
         self.order_ca = self.exchange.create_order(symbol_ac, 'market', 'sell', amount=amount_ca)
         self.waiting_for_order_finished(self.order_ca['id'], extra_info='c -> a')
-
-
-
-
 
     def _fetch_ohlcv_safe(self, symbol, since=None):
         try:
