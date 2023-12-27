@@ -7,8 +7,8 @@ from model.order import OrderData
 
 
 class StrategyTriangular(StrategyBase):
-    def __init__(self, exchange, initial_cash, lower_profit_limit=10, currency_a='BTC', currency_b='ETH'):
-        super().__init__(exchange, initial_cash)
+    def __init__(self, exchange, current_cash=0, lower_profit_limit=10, currency_a='BTC', currency_b='ETH'):
+        super().__init__(exchange, current_cash)
         self.lower_profit_limit = lower_profit_limit
         self.currency_a = currency_a
         self.currency_b = currency_b
@@ -44,14 +44,13 @@ class StrategyTriangular(StrategyBase):
         # 获取相同的基础货币列表
         self.common_base_list = list(set(base_a_list) & set(base_b_list))
 
-    def on_next(self, candle, is_backtest=False):
+    def on_next(self, candle):
         # 每次迭代清空之前的交易记录
         self.clear_temp_data()
         # 三角套利这里的candle如果是一个数组，会有点矛盾，每一次新的交易对都要重新计算，但没计算前又不知道是第三个交易对选哪个
         # 所以我们这里candle就只传入时间，方便回测
         self.select_symbol(since=candle)  # 每一次都重新选出第三个交易对
-        ongoing_orders = self.make_trad(is_backtest)
-        return ongoing_orders
+        self.make_trad()
 
     def select_symbol(self, since=None):
         for currency_c in self.common_base_list:
@@ -78,11 +77,9 @@ class StrategyTriangular(StrategyBase):
                 self.price_ca_ts = p3_ts
                 return
 
-    def make_trad(self, is_backtest=False):
+    def make_trad(self):
         if self.currency_c == '':
             return
-        if is_backtest:
-            return self.make_trad_backtest()
         symbol_ba = self.currency_b + '/' + self.currency_a
         symbol_cb = self.currency_c + '/' + self.currency_b
         symbol_ca = self.currency_c + '/' + self.currency_a
@@ -102,18 +99,7 @@ class StrategyTriangular(StrategyBase):
         self.waiting_for_order_finished(self.order_ca['id'], extra_info='c -> a')
 
 
-    def make_trad_backtest(self):
-        symbol_ba = self.currency_b + '/' + self.currency_a
-        symbol_cb = self.currency_c + '/' + self.currency_b
-        symbol_ca = self.currency_c + '/' + self.currency_a
-        amount_ba = self.current_cash // self.price_ba
-        amount_cb = self.current_cash // self.price_cb
-        amount_ca = self.current_cash // self.price_ca
-        # 模拟下单的操作, 来生成order
-        self.order_ba = OrderData.generate_mock_order(symbol_ba, self.price_ba, amount_ba)
-        self.order_cb = OrderData.generate_mock_order(symbol_cb, self.price_cb, amount_cb)
-        self.order_ca = OrderData.generate_mock_order(symbol_ca, self.price_ca, amount_ca, side='sell')
-        return [self.order_ba, self.order_cb, self.order_ca]
+
 
 
     def _fetch_ohlcv_safe(self, symbol, since=None):

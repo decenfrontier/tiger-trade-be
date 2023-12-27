@@ -1,4 +1,3 @@
-import os
 import time
 
 import ccxt
@@ -32,9 +31,7 @@ class BackTester:
 		strategy_inst = self.strategy_cls(self.exchange)
 		strategy_inst.on_start()
 		for index, candle in self.data.iterrows():
-			ongoing_orders = strategy_inst.on_next(candle)
-			self.ongoing_orders.extend(ongoing_orders)
-			self.waiting_order_finish()
+			strategy_inst.on_next(candle)
 		strategy_inst.on_stop()
 		self.calculate()
 
@@ -58,20 +55,7 @@ class BackTester:
 		plt.plot(x, y)
 		plt.show()
 
-	# 确定order交易成功再继续
-	def waiting_order_finish(self):
-		while self.ongoing_orders:
-			i = 0
-			while self.ongoing_orders:
-				if i >= len(self.ongoing_orders):
-					break
-				order = self.ongoing_orders[i]
-				if self.exchange.fetch_order(order['id'])['status'] == 'closed':
-					self.ongoing_orders.remove(order)
-					self.trades.append(TradeData(order['timestamp'], order['symbol'], order['type'], order['price'], order['amount']))
-				else:
-					i += 1
-				time.sleep(self.exchange.rateLimit / 1000)
+
 
 
 if __name__ == '__main__':

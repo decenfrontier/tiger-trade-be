@@ -5,8 +5,9 @@ from pkg.xlog import logger
 
 
 class StrategyBase:
-    def __init__(self, exchange):
+    def __init__(self, exchange, current_cash):
         self.exchange = exchange
+        self.cur_cash = current_cash
 
     def on_start(self):
         logger.info("on_start")
