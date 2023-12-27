@@ -39,8 +39,8 @@ if __name__ == '__main__':
 		'timeout': 15000,
 		'enableRateLimit': True,
 		'proxies': {
-			'https': 'http://127.0.0.1:7897',
-			'http': 'http://127.0.0.1:7897'
+			'https': 'http://127.0.0.1:7890',
+			'http': 'http://127.0.0.1:7890'
 		}
 	})
 	bt = BackTester(exchange, data, StrategyTriangularBT)

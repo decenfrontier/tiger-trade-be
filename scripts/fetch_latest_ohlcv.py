@@ -6,8 +6,8 @@ from utils.utils import calc_func_elapsed_time
 exchange = ccxt.binance({'timeout': 15000,
                          'enableRateLimit': False,
                          'proxies': {
-                             'https': 'http://127.0.0.1:7897',
-                             'http': 'http://127.0.0.1:7897'
+                             'https': 'http://127.0.0.1:7890',
+                             'http': 'http://127.0.0.1:7890'
                          }})
 
 

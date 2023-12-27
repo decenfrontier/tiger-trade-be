@@ -4,12 +4,12 @@ import time
 
 from strategy.base import StrategyBase
 from pkg.xlog import logger
-from utils.utils import calc_func_elapsed_time
+from utils.utils import calc_func_elapsed_time, save_obj_into_file, load_obj_from_file
 from model.order import OrderData
 
 
 class StrategyTriangular(StrategyBase):
-    def __init__(self, exchange, current_cash=0, lower_profit_limit=10, currency_a='BTC', currency_b='ETH'):
+    def __init__(self, exchange, current_cash=0, lower_profit_limit=5, currency_a='USDT', currency_b='BNB'):
         super().__init__(exchange, current_cash)
         self.lower_profit_limit = lower_profit_limit
         self.currency_a = currency_a
@@ -32,8 +32,12 @@ class StrategyTriangular(StrategyBase):
     def on_start(self):
         # 加载行情
         markets = self.exchange.load_markets()
-        # 找到同时以A和B计价的交易对
+        # 先要查一下有没有 B/A 的交易对
         symbols = list(markets.keys())
+        symbol_ba = self.currency_b + '/' + self.currency_a
+        if symbol_ba not in symbols:
+            raise Exception(f'B/A symbol {symbol_ba} not in symbols')
+        # 找到同时以A和B计价的交易对
         symbols_df = pd.DataFrame(symbols, columns=['symbol'])
         # 分割字符串得到 基础货币/计价货币
         base_quote_df = symbols_df['symbol'].str.split('/', expand=True)
@@ -45,6 +49,8 @@ class StrategyTriangular(StrategyBase):
                                     == self.currency_b]['base'].tolist()
         # 获取相同的基础货币列表
         self.common_base_list = list(set(base_a_list) & set(base_b_list))
+        # 但有些虽然在 keys 中, 实际上是获取不到ticker数据的, 也要从交集中移除
+        self._remove_invalid_symbol()
         logger.info(f'[triangular] on_start, There are {len(self.common_base_list)} currencies denominated in these two currencies')
         logger.info(f'[triangular] on_start, exchange_rate_limit={self.exchange.rateLimit}')
 
@@ -62,27 +68,31 @@ class StrategyTriangular(StrategyBase):
 
     def select_symbol(self, since=None):
         max_profit = 0
+        max_profit_currency_c = ''
+        max_profit_ts = 0
         for currency_c in self.common_base_list:
             ba = self.currency_b + '/' + self.currency_a
             cb = currency_c + '/' + self.currency_b
             ca = currency_c + '/' + self.currency_a
-            p1, p1_ts = self._fetch_ohlcv_safe(ba, since=since)
+            p1, p1_ts = self._get_symbol_price_timestamp(ba, since=since)
             if p1 == 0:
                 continue
-            p2, p2_ts = self._fetch_ohlcv_safe(cb, since=since)
+            p2, p2_ts = self._get_symbol_price_timestamp(cb, since=since)
             if p2 == 0:
                 continue
-            p3, p3_ts = self._fetch_ohlcv_safe(ca, since=since)
+            p3, p3_ts = self._get_symbol_price_timestamp(ca, since=since)
             if p3 == 0:
                 continue
             if since is None:
                 cur_ts = self.exchange.milliseconds()
-                if not self._is_in_one_sec(cur_ts, p1_ts, p2_ts, p3_ts):
+                if not self._is_in_valid_time(cur_ts, p1_ts, p2_ts, p3_ts):
                     continue
             profit = (p3 / (p1 * p2) - 1) * 1000
             logger.info('currency_c={}, profit={}, ts={}'.format(currency_c, profit, p3_ts))
             if profit > max_profit:
                 max_profit = profit
+                max_profit_currency_c = currency_c
+                max_profit_ts = p3_ts
             if profit > self.lower_profit_limit:  # 利润超过设定的下限，可以进行三角套利
                 self.currency_c = currency_c
                 self.price_ba = p1
@@ -91,7 +101,11 @@ class StrategyTriangular(StrategyBase):
                 self.price_ba_ts = p1_ts
                 self.price_cb_ts = p2_ts
                 self.price_ca_ts = p3_ts
+                logger.info('[triangular] select_symbol success|currency_c={}, profit={}, ts={}'.format(
+                    currency_c, max_profit, p3_ts))
                 return True
+        logger.info('[triangular] select_symbol failed|currency_c={}, max_profit={}, ts={}'.format(
+                max_profit_currency_c, max_profit, max_profit_ts))
         return False
 
     def make_trad(self):
@@ -115,15 +129,41 @@ class StrategyTriangular(StrategyBase):
         self.order_ca = self.exchange.create_order(symbol_ac, 'market', 'sell', amount=amount_ca)
         self.waiting_for_order_finished(self.order_ca['id'], extra_info='c -> a')
 
-    def _fetch_ohlcv_safe(self, symbol, since=None):
+    # @calc_func_elapsed_time
+    def _get_symbol_price_timestamp(self, symbol, since=None):
         try:
-            tohlcv = self.exchange.fetch_ohlcv(symbol, timeframe='1s', limit=1, since=since)[0]
-            return tohlcv[4] or 0, tohlcv[0] or 0
+            if since:
+                tohlcv = self.exchange.fetch_ohlcv(symbol, timeframe='1s', limit=1, since=since)[0]
+                return tohlcv[4] or 0, tohlcv[0] or 0
+            else:
+                ticker = self.exchange.fetch_ticker(symbol)
+                return ticker['last'] or 0, ticker['timestamp'] or 0
         except Exception as e:
+            logger.warning(f"_fetch_ohlcv_safe, error: {e}")
             return 0, 0
 
-    def _is_in_one_sec(self, cur_ts, p1_ts, p2_ts, p3_ts):
-        return abs(cur_ts - p1_ts) < 1000 and abs(cur_ts - p2_ts) < 1000 and abs(cur_ts - p3_ts) < 1000
+    def _is_in_valid_time(self, cur_ts, p1_ts, p2_ts, p3_ts):
+        return abs(cur_ts - p1_ts) < 1500 and abs(cur_ts - p2_ts) < 1500 and abs(cur_ts - p3_ts) < 1500
+
+    def _remove_invalid_symbol(self):
+        # 优先读配置文件
+        config_file = f"../config/binance-{self.currency_a}-{self.currency_b}.bin"
+        config_common_list = load_obj_from_file(config_file)
+        if isinstance(config_common_list, list):
+            self.common_base_list = config_common_list
+            return
+        # 没读到再筛选
+        for i, currency_c in enumerate(self.common_base_list):
+            symbol_cb = currency_c + "/" + self.currency_b
+            symbol_ca = currency_c + "/" + self.currency_a
+            p2, _ = self._get_symbol_price_timestamp(symbol_cb)
+            p3, _ = self._get_symbol_price_timestamp(symbol_ca)
+            if p2 == 0 or p3 == 0:
+                self.common_base_list.pop(i)
+                i -= 1  # 每次 pop 之后, for 会i+1, 但此时i已经指向了下一个元素, 所以需要i-1
+        # 筛选结束后保存为配置文件, 下次直接读配置
+        save_obj_into_file(self.common_base_list, config_file)
+
 
 
 if __name__ == '__main__':

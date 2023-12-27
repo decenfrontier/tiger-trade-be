@@ -7,8 +7,8 @@ from pkg.xlog import logger
 exchange = ccxt.binance({'timeout': 15000,
                          'enableRateLimit': True,
                          'proxies': {
-                             'https': 'http://127.0.0.1:7897',
-                             'http': 'http://127.0.0.1:7897'
+                             'https': 'http://127.0.0.1:7890',
+                             'http': 'http://127.0.0.1:7890'
                          }})
 
 

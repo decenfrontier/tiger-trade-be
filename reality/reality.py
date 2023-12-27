@@ -35,15 +35,17 @@ class Reality:
 
 if __name__ == '__main__':
     exchange = ccxt.binance({
-        'apiKey': os.getenv('BA_TEST_API_KEY') if ENV == 'test' else 'BA_API_KEY',
-        'secret': os.getenv('BA_TEST_SECRET_KEY') if ENV == 'test' else 'BA_SECRET_KEY',
+        'apiKey': os.getenv('BA_TEST_API_KEY') if ENV == 'test' else os.getenv('BA_API_KEY'),
+        'secret': os.getenv('BA_TEST_SECRET') if ENV == 'test' else os.getenv('BA_SECRET'),
         'timeout': 15000,
         'enableRateLimit': True,
         'proxies': {
-            'https': 'http://127.0.0.1:7897',
-            'http': 'http://127.0.0.1:7897'
+            'https': 'http://127.0.0.1:7890',
+            'http': 'http://127.0.0.1:7890'
         }
     })
+    if ENV == 'test':
+        exchange.set_sandbox_mode(True)
     bt = Reality(exchange, StrategyTriangular)
     bt.run()
     bt.calculate()
