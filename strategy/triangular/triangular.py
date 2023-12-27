@@ -49,7 +49,10 @@ class StrategyTriangular(StrategyBase):
         logger.info(f'[triangular] on_start, exchange_rate_limit={self.exchange.rateLimit}')
 
     def on_next(self, since):
-        logger.info(f'[triangular] on_next, since={datetime.fromtimestamp(since / 1000)}------------------')
+        if since:
+            logger.info(f'[triangular] on_next, since={datetime.fromtimestamp(since / 1000)}------------------')
+        else:
+            logger.info(f'[triangular] on_next, cur_time={datetime.now()}------------------')
         # 每次迭代清空之前的交易记录
         self.clear_temp_data()
         # 三角套利这里的candle如果是一个数组，会有点矛盾，每一次新的交易对都要重新计算，但没计算前又不知道是第三个交易对选哪个

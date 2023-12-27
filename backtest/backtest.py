@@ -19,7 +19,6 @@ class BackTester:
 		self.ongoing_orders = []  # 还未成交的订单
 
 	def run(self):
-		self.trades = []  # 每次运行回测清空之前的交易记录
 		self.strategy_inst.on_start()
 		for index, candle in self.data.iterrows():
 			candle_value = candle.values[0]
