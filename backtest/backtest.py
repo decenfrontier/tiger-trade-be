@@ -22,7 +22,8 @@ class BackTester:
 		self.trades = []  # 每次运行回测清空之前的交易记录
 		self.strategy_inst.on_start()
 		for index, candle in self.data.iterrows():
-			self.strategy_inst.on_next(candle)
+			candle_value = candle.values[0]
+			self.strategy_inst.on_next(candle_value)
 		self.strategy_inst.on_stop()
 
 	# 净利润, 利润率, 年化利润率
@@ -34,7 +35,7 @@ class BackTester:
 
 
 if __name__ == '__main__':
-	data = pd.read_csv('./triangular/data.csv')
+	data = pd.read_csv('./triangular/bt_data.csv')
 	exchange = ccxt.binance({
 		'timeout': 15000,
 		'enableRateLimit': True,

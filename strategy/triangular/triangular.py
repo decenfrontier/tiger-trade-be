@@ -1,8 +1,10 @@
 import pandas as pd
+from datetime import datetime
 import time
 
 from strategy.base import StrategyBase
 from pkg.xlog import logger
+from utils.utils import calc_func_elapsed_time
 from model.order import OrderData
 
 
@@ -43,13 +45,16 @@ class StrategyTriangular(StrategyBase):
                                     == self.currency_b]['base'].tolist()
         # 获取相同的基础货币列表
         self.common_base_list = list(set(base_a_list) & set(base_b_list))
+        logger.info(f'[triangular] on_start, There are {len(self.common_base_list)} currencies denominated in these two currencies')
+        logger.info(f'[triangular] on_start, exchange_rate_limit={self.exchange.rateLimit}')
 
-    def on_next(self, candle):
+    def on_next(self, since):
+        logger.info(f'[triangular] on_next, since={datetime.fromtimestamp(since / 1000)}------------------')
         # 每次迭代清空之前的交易记录
         self.clear_temp_data()
         # 三角套利这里的candle如果是一个数组，会有点矛盾，每一次新的交易对都要重新计算，但没计算前又不知道是第三个交易对选哪个
         # 所以我们这里candle就只传入时间，方便回测
-        if self.select_symbol(since=candle):  # 每一次都重新选出第三个交易对
+        if self.select_symbol(since=since):  # 每一次都重新选出第三个交易对
             self.make_trad()
 
     def select_symbol(self, since=None):
@@ -59,15 +64,20 @@ class StrategyTriangular(StrategyBase):
             cb = currency_c + '/' + self.currency_b
             ca = currency_c + '/' + self.currency_a
             p1, p1_ts = self._fetch_ohlcv_safe(ba, since=since)
+            if p1 == 0:
+                continue
             p2, p2_ts = self._fetch_ohlcv_safe(cb, since=since)
+            if p2 == 0:
+                continue
             p3, p3_ts = self._fetch_ohlcv_safe(ca, since=since)
-            if p1 == 0 or p2 == 0 or p3 == 0:
+            if p3 == 0:
                 continue
-            cur_ts = self.exchange.milliseconds()
-            if not _is_in_one_sec(cur_ts, p1_ts, p2_ts, p3_ts):
-                continue
+            if since is None:
+                cur_ts = self.exchange.milliseconds()
+                if not self._is_in_one_sec(cur_ts, p1_ts, p2_ts, p3_ts):
+                    continue
             profit = (p3 / (p1 * p2) - 1) * 1000
-            logger.info('currency_c={}, profit={}'.format(currency_c, profit))
+            logger.info('currency_c={}, profit={}, ts={}'.format(currency_c, profit, p3_ts))
             if profit > max_profit:
                 max_profit = profit
             if profit > self.lower_profit_limit:  # 利润超过设定的下限，可以进行三角套利
@@ -79,7 +89,6 @@ class StrategyTriangular(StrategyBase):
                 self.price_cb_ts = p2_ts
                 self.price_ca_ts = p3_ts
                 return True
-            time.sleep(self.exchange.rateLimit * 3 / 1000)
         return False
 
     def make_trad(self):

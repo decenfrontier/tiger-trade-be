@@ -1,4 +1,6 @@
+from model.order import OrderData
 from strategy.triangular.triangular import StrategyTriangular
+from pkg.xlog import logger
 
 class StrategyTriangularBT(StrategyTriangular):
     def make_trad(self):
@@ -16,4 +18,8 @@ class StrategyTriangularBT(StrategyTriangular):
         # 再用C换A
         amount_c = amount_b / self.price_cb
         self.order_ca = OrderData.generate_mock_order(symbol_ca, self.price_ca, amount_c, side='sell', status='closed')
-        self.cur_cash = amount_c / self.price_ca
+        ori_cash = self.cur_cash
+
+        amount_a = amount_c * self.price_ca
+        self.cur_cash = amount_a
+        logger.info('[make_trad_bt] make_trade success, ori_cash={}, cur_cash={}'.format(ori_cash, self.cur_cash))

@@ -23,7 +23,6 @@ class StrategyBase:
                 logger.info(f"[waiting_for_order_finished]order finished|order_id={order_id}|{extra_info}")
                 # TODO: 这里最好加个监控, 预期价格，实际成交价格, 下单时间, 成交时间
                 return True
-            time.sleep(self.exchange.rateLimit / 1000)
             if time.time() - start_time > 10:  # 10秒后还没成交, 自动取消
                 logger.error(f"[waiting_for_order_finished]order timeout|order_id={order_id}|{extra_info}")
                 return False
