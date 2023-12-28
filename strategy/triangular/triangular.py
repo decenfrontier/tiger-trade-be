@@ -9,11 +9,12 @@ from model.order import OrderData
 
 
 class StrategyTriangular(StrategyBase):
-    def __init__(self, exchange, current_cash=0, lower_profit_limit=5, currency_a='USDT', currency_b='BNB'):
+    def __init__(self, exchange, current_cash=0, lower_profit_limit=1, currency_a='USDT', currency_b='BNB'):
         super().__init__(exchange, current_cash)
         self.lower_profit_limit = lower_profit_limit
         self.currency_a = currency_a
         self.currency_b = currency_b
+        self.per_soha_rate = 0.8  # 每次交易梭哈比例, 注意不能填1, 因为还要留点钱付手续费
         self.common_base_list = []
         self.clear_temp_data()
 
@@ -67,7 +68,7 @@ class StrategyTriangular(StrategyBase):
             self.make_trad()
 
     def select_symbol(self, since=None):
-        max_profit = 0
+        max_profit = -9999
         max_profit_currency_c = ''
         max_profit_ts = 0
         for currency_c in self.common_base_list:
@@ -116,18 +117,21 @@ class StrategyTriangular(StrategyBase):
         symbol_ca = self.currency_c + '/' + self.currency_a
         # 先用A换B
         amount_a = self.get_balance(self.currency_a)
-        self.order_ba = self.exchange.create_order(symbol_ba, 'market', 'buy', amount=amount_a)
-        if not self.waiting_for_order_finished(self.order_ba['id'], extra_info='a -> b'):
-            return
-        # 再用B换C
+        logger.info(f'[triangular] make_trad a->b|symbol_ba={symbol_ba}, amount_a={amount_a}')
+        self.order_ba = self.exchange.create_market_order_with_cost(symbol_ba, 'buy', amount_a)  # 此函数交易以 quote 为单位
+        if not self.waiting_for_order_finished(self.order_ba['id'], symbol_ba, extra_info='a -> b'):
+            raise Exception(f"[triangular] make_trad a->b|symbol_ba={symbol_ba}, amount_a={amount_a}, order_id={self.order_ba['id']}")
+        # 再用B换C, 这里可能是冷门交易对, 有价无市, 我们要买, 但没有人卖, 导致交易过期
         amount_b = self.get_balance(self.currency_b)
-        self.order_cb = self.exchange.create_order(symbol_cb, 'market', 'buy', amount=amount_b)
-        if not self.waiting_for_order_finished(self.order_cb['id'], extra_info='b -> c'):
+        logger.info(f'[triangular] make_trad b->c|symbol_cb={symbol_cb}, amount_b={amount_b}')
+        self.order_cb = self.exchange.create_market_order_with_cost(symbol_cb, 'buy', amount_b)  # 此函数交易以 quote 为单位
+        if not self.waiting_for_order_finished(self.order_cb['id'], symbol_cb, extra_info='b -> c'):
             return
         # 再用C换A, 比如C是QKC, 找不到BTC/QKC, 只能找QKC/BTC, 然后卖出QKC, 得到BTC
         amount_c = self.get_balance(self.currency_c)
-        self.order_ca = self.exchange.create_order(symbol_ac, 'market', 'sell', amount=amount_ca)
-        self.waiting_for_order_finished(self.order_ca['id'], extra_info='c -> a')
+        logger.info(f'[triangular] make_trad c->a|symbol_ca={symbol_ca}, amount_c={amount_c}')
+        self.order_ca = self.exchange.create_order(symbol_ca, 'market', 'sell', amount_c)  # 此函数交易以 base 为单位
+        self.waiting_for_order_finished(self.order_ca['id'], symbol_ca, extra_info='c -> a')
 
     # @calc_func_elapsed_time
     def _get_symbol_price_timestamp(self, symbol, since=None):

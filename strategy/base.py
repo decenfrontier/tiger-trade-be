@@ -15,21 +15,21 @@ class StrategyBase:
     def on_stop(self):
         logger.info("on_stop")
 
-    def waiting_for_order_finished(self, order_id, extra_info=''):
+    def waiting_for_order_finished(self, order_id, symbol, extra_info=''):
         start_time = time.time()
         while True:
-            order = self.exchange.fetch_order(order_id)
+            order = self.exchange.fetch_order(order_id, symbol=symbol)
             if order['status'] in [OrderStatus.Closed, OrderStatus.Filled]:
-                logger.info(f"[waiting_for_order_finished]order finished|order_id={order_id}|{extra_info}")
+                logger.info(f'[waiting_for_order_finished]{extra_info} order finished|order_id={order_id}')
                 # TODO: 这里最好加个监控, 预期价格，实际成交价格, 下单时间, 成交时间
                 return True
-            if time.time() - start_time > 10:  # 10秒后还没成交, 自动取消
-                logger.error(f"[waiting_for_order_finished]order timeout|order_id={order_id}|{extra_info}")
+            if time.time() - start_time > 10:  # 10秒后还没成交
+                logger.error(f'[waiting_for_order_finished]{extra_info} order timeout|order_id={order_id},order_status={order["status"]}')
                 return False
 
     def get_balance(self, currency):
         balance = self.exchange.fetch_balance()
-        return balance['free'][currency]
+        return balance[currency]['free']
 
     def on_next(self, candle):
         raise NotImplementedError("on_next must be implemented")
